@@ -1,0 +1,5 @@
+{
+  "name": "美股 AI 分析师",
+  "description": "由 Gemini 3 Pro 驱动的专业级美股市场分析工具。具备实时搜索溯源、技术面分析、新闻摘要和交互式图表功能。",
+  "requestFramePermissions": []
+}
