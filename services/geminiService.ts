@@ -27,19 +27,24 @@ export const analyzeStock = async (ticker: string): Promise<StockAnalysisResult>
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const prompt = `
-    Role: You are a strict, algorithmic Wall Street Trading AI specialized in the US Market.
+    Role: You are a strict, algorithmic Wall Street Trading AI specialized in the US Market and Chan Lun (缠论) Technical Analysis.
     Objective: Analyze ticker "${ticker}" to generate a "Daily Decision Dashboard".
     
     Philosophy (Strictly Enforce):
     1. NO CHASING HIGHS: If price is significantly above the 20-day Moving Average (Bias Rate > 5%), mark as High Risk (Warning).
-    2. TREND IS KING: Look for Moving Average alignment (MA5 > MA10 > MA20).
+    2. CHAN LUN STRUCTURE: Base trend judgment on Central Pivots (中枢) and Buy/Sell Points (买卖点).
     3. SAFETY FIRST: Always provide a Stop Loss.
 
     Tasks:
     1. Use Google Search to find real-time data: Price, Change, Market Cap, Volume, P/E.
     2. Search for Technical Indicators: RSI, MACD status, Moving Averages (MA5, MA20, MA60).
-    3. Search for latest News/Catalysts (last 48 hours).
-    4. Formulate a Trade Setup based on the data.
+    3. **Perform Chan Lun (缠论) Analysis**:
+       - Identify the current trend type (Upward/Downward/Consolidation).
+       - Locate Central Pivots (中枢) and define the current level.
+       - Check for Trend Divergence (背驰/盘整背驰) using MACD as an auxiliary.
+       - Identify valid Buy/Sell Points (1st/2nd/3rd Buy or Sell Points - 一买/二买/三买).
+    4. Search for latest News/Catalysts (last 48 hours).
+    5. Formulate a Trade Setup based on the data.
 
     Output Format:
     Return strictly valid JSON inside \`\`\`json\`\`\` blocks. No conversational text outside the JSON.
@@ -58,21 +63,21 @@ export const analyzeStock = async (ticker: string): Promise<StockAnalysisResult>
       },
       "tradeSetup": {
         "verdict": "BULLISH | BEARISH | NEUTRAL",
-        "verdictReason": "One concise, impactful sentence summarizing the core decision logic.",
+        "verdictReason": "One concise, impactful sentence summarizing the core decision logic (incorporating Chan Lun view).",
         "entryZone": "Specific price range or 'Market Price'",
-        "targetPrice": "Specific price target based on resistance/fibonacci",
-        "stopLoss": "Specific stop loss price based on support/volatility",
+        "targetPrice": "Specific price target based on Chan Pivot pressure or Fibonacci",
+        "stopLoss": "Specific stop loss price based on Chan Pivot support (中枢下沿) or volatility",
         "confidenceScore": number (0-100)
       },
       "checklist": [
-        { "name": "趋势形态 (Trend)", "status": "PASS | WARN | FAIL", "detail": "e.g., Multi-head arrangement" },
-        { "name": "乖离率 (Bias Risk)", "status": "PASS | WARN | FAIL", "detail": "e.g., Price near MA20 vs Price overextended" },
-        { "name": "成交量 (Volume)", "status": "PASS | WARN | FAIL", "detail": "e.g., Volume surge vs Shrinking" },
-        { "name": "资金/情绪 (Sentiment)", "status": "PASS | WARN | FAIL", "detail": "e.g., Institutional inflow vs Net outflow" },
+        { "name": "缠论结构 (Chan Structure)", "status": "PASS | WARN | FAIL", "detail": "e.g., 3rd Buy Point Confirmed (三买确认) or Divergence (顶背驰)" },
+        { "name": "趋势形态 (Trend)", "status": "PASS | WARN | FAIL", "detail": "e.g., MA Alignment" },
+        { "name": "资金/情绪 (Sentiment)", "status": "PASS | WARN | FAIL", "detail": "e.g., Institutional inflow" },
+        { "name": "成交量 (Volume)", "status": "PASS | WARN | FAIL", "detail": "e.g., Volume matches trend" },
         { "name": "支撑/压力 (S/R)", "status": "PASS | WARN | FAIL", "detail": "e.g., Above key support" }
       ],
       "summary": "Detailed executive summary (Markdown supported).",
-      "technicalAnalysis": "Detailed technical analysis regarding RSI, MACD, KDJ, Bollinger Bands (Markdown supported).",
+      "technicalAnalysis": "Detailed technical analysis. **MUST** include a dedicated section titled '### 🧘 缠论形态分析 (Chan Lun Analysis)' that explicitly analyzes the Central Pivot (中枢), Divergence (背驰), and Buy/Sell Points. Then provide standard analysis for RSI, MACD, KDJ, Bollinger Bands. (Markdown supported).",
       "chartData": [
         { "time": "HH:MM", "price": number } // Provide ~15 intraday points if open, or daily points if closed.
       ],
