@@ -33,9 +33,15 @@ export const analyzeStock = async (ticker: string): Promise<StockAnalysisResult>
     console.error("Error accessing __API_KEY__", e);
   }
 
-  if (!key) {
+  // Strict check for empty string
+  if (!key || key === "" || key === "undefined") {
     console.error("API Key is missing in runtime.");
-    throw new Error("System Error: API Key is not configured in the build environment.");
+    throw new Error("API Key is missing. Please check your Vercel Environment Variables (Settings -> Environment Variables -> API_KEY) and then REDEPLOY the project.");
+  }
+
+  // Sanity check for SDK
+  if (typeof GoogleGenAI === 'undefined') {
+     throw new Error("GoogleGenAI SDK not loaded. Please check your internet connection.");
   }
 
   const ai = new GoogleGenAI({ apiKey: key });

@@ -12,15 +12,15 @@ export default defineConfig(({ mode }) => {
   if (apiKey) {
     console.log("✅ Build: API_KEY found and will be injected.");
   } else {
-    console.warn("⚠️ Build: API_KEY is missing! App will fail at runtime.");
+    console.warn("⚠️ Build: API_KEY is missing! The app will fail at runtime unless injected differently.");
   }
 
   return {
     plugins: [react()],
     define: {
       // Create a global constant string that contains the key. 
-      // This string replaces __API_KEY__ in your source code during build.
-      '__API_KEY__': JSON.stringify(apiKey),
+      // JSON.stringify(apiKey || "") ensures we don't get 'undefined' token in JS.
+      '__API_KEY__': JSON.stringify(apiKey || ""),
     },
     build: {
       outDir: 'dist',

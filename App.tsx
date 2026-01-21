@@ -50,9 +50,11 @@ const App: React.FC = () => {
       const result = await analyzeStock(ticker);
       setData(result);
       setLoadingState(LoadingState.SUCCESS);
-    } catch (err) {
-      console.error(err);
-      setError("获取分析失败，请稍后重试或检查股票代码。");
+    } catch (err: any) {
+      console.error("Full Error Object:", err);
+      // Display the actual error message to help debugging (e.g., "API Key missing" or "Quota exceeded")
+      const errorMessage = err.message || JSON.stringify(err) || "获取分析失败，请稍后重试或检查股票代码。";
+      setError(errorMessage);
       setLoadingState(LoadingState.ERROR);
     }
   };
@@ -108,11 +110,21 @@ const App: React.FC = () => {
         />
 
         {error && (
-          <div className="max-w-2xl mx-auto mt-6 bg-red-900/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg text-center flex items-center justify-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-            {error}
+          <div className="max-w-3xl mx-auto mt-6 bg-red-900/20 border border-red-500/50 text-red-200 px-6 py-4 rounded-lg flex flex-col items-center justify-center gap-2 text-center animate-pulse-slow">
+            <div className="flex items-center gap-2 font-bold text-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              分析失败 (Analysis Failed)
+            </div>
+            <p className="font-mono text-sm bg-black/30 p-2 rounded w-full break-all border border-red-500/20">
+              {error}
+            </p>
+            {error.includes("Key") && (
+              <p className="text-xs text-red-300 mt-1">
+                提示: 请检查 Vercel 环境变量设置并**重新部署(Redeploy)**以生效。
+              </p>
+            )}
           </div>
         )}
 
