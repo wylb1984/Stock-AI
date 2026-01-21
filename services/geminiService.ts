@@ -20,8 +20,11 @@ const extractJson = (text: string): any => {
 };
 
 export const analyzeStock = async (ticker: string): Promise<StockAnalysisResult> => {
+  console.log(`Starting analysis for ${ticker}...`);
+
   if (!process.env.API_KEY) {
-    throw new Error("API Key is missing.");
+    console.error("API Key is missing or undefined.");
+    throw new Error("API Key is missing. Please check your Vercel Environment Variables.");
   }
 
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -90,6 +93,7 @@ export const analyzeStock = async (ticker: string): Promise<StockAnalysisResult>
   try {
     let response;
     try {
+      console.log("Attempting Gemini 3 Pro...");
       // Attempt with Gemini 3 Pro first (best reasoning)
       response = await ai.models.generateContent({
         model: 'gemini-3-pro-preview', 
