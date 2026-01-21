@@ -22,12 +22,19 @@ const extractJson = (text: string): any => {
 export const analyzeStock = async (ticker: string): Promise<StockAnalysisResult> => {
   console.log(`Starting analysis for ${ticker}...`);
 
-  if (!process.env.API_KEY) {
-    console.error("API Key is missing or undefined.");
-    throw new Error("API Key is missing. Please check your Vercel Environment Variables.");
+  // Debugging: Log key status (masked)
+  const key = process.env.API_KEY;
+  if (key) {
+    console.log(`API Key detected (Length: ${key.length}, Starts with: ${key.substring(0, 4)}...)`);
+  } else {
+    console.error("API Key variable is falsy/empty in browser runtime.");
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  if (!key) {
+    throw new Error("API Key is missing. Please check your Vercel Environment Variables and ensure you have redeployed.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey: key });
 
   const prompt = `
     Role: You are a strict, algorithmic Wall Street Trading AI specialized in the US Market and Chan Lun (缠论) Technical Analysis.
