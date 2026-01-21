@@ -22,6 +22,9 @@ const extractJson = (text: string): any => {
   }
 };
 
+// Helper for delay
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export const analyzeStock = async (ticker: string): Promise<StockAnalysisResult> => {
   console.log(`Starting analysis for ${ticker}...`);
 
@@ -118,27 +121,50 @@ export const analyzeStock = async (ticker: string): Promise<StockAnalysisResult>
 
   try {
     let response;
+    
+    // Strategy: 
+    // 1. Try Gemini 3 Pro (Smartest, Low Quota)
+    // 2. Try Gemini 3 Flash (Fast, Medium Quota)
+    // 3. Try Gemini 2.0 Flash Exp (High Quota / Separate Bucket)
+    
     try {
       console.log("Attempting Gemini 3 Pro...");
       response = await ai.models.generateContent({
         model: 'gemini-3-pro-preview', 
         contents: prompt,
-        config: {
-          tools: [{ googleSearch: {} }], // Force search tool availability
-        }
+        config: { tools: [{ googleSearch: {} }] }
       });
     } catch (e: any) {
-      console.warn("Primary model failed, attempting fallback to Gemini 3 Flash...", e);
-      response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview', 
-        contents: prompt,
-        config: {
-          tools: [{ googleSearch: {} }],
-        }
-      });
+      console.warn("Gemini 3 Pro failed (likely quota), waiting 2s before fallback...", e);
+      await delay(2000); // Cool down
+
+      try {
+         console.log("Attempting Fallback 1: Gemini 3 Flash...");
+         response = await ai.models.generateContent({
+          model: 'gemini-3-flash-preview', 
+          contents: prompt,
+          config: { tools: [{ googleSearch: {} }] }
+        });
+      } catch (e2: any) {
+         console.warn("Gemini 3 Flash failed, waiting 2s before final fallback...", e2);
+         await delay(2000); 
+
+         // Final Fallback: Gemini 2.0 Flash Exp
+         // This model often has a separate quota bucket for free users, making it a great safety net.
+         console.log("Attempting Fallback 2: Gemini 2.0 Flash Exp...");
+         response = await ai.models.generateContent({
+          model: 'gemini-2.0-flash-exp', 
+          contents: prompt,
+          config: { tools: [{ googleSearch: {} }] }
+        });
+      }
     }
 
-    const text = response.text || "";
+    const text = response?.text || "";
+    if (!text) {
+        throw new Error("No content generated from any model.");
+    }
+
     const parsedData = extractJson(text);
 
     if (!parsedData) {
@@ -169,8 +195,15 @@ export const analyzeStock = async (ticker: string): Promise<StockAnalysisResult>
       timestamp: new Date().toLocaleTimeString('zh-CN')
     };
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini API Error:", error);
+    
+    // User-friendly error message for Quota issues
+    const errString = JSON.stringify(error);
+    if (errString.includes("429") || errString.includes("RESOURCE_EXHAUSTED")) {
+        throw new Error("API 调用过于频繁 (Quota Exceeded)。所有备用模型均繁忙，请等待 30 秒后再次尝试。");
+    }
+    
     throw error;
   }
 };

@@ -52,7 +52,7 @@ const App: React.FC = () => {
       setLoadingState(LoadingState.SUCCESS);
     } catch (err: any) {
       console.error("Full Error Object:", err);
-      // Display the actual error message to help debugging (e.g., "API Key missing" or "Quota exceeded")
+      // Display the actual error message to help debugging
       const errorMessage = err.message || JSON.stringify(err) || "获取分析失败，请稍后重试或检查股票代码。";
       setError(errorMessage);
       setLoadingState(LoadingState.ERROR);
@@ -111,18 +111,34 @@ const App: React.FC = () => {
 
         {error && (
           <div className="max-w-3xl mx-auto mt-6 bg-red-900/20 border border-red-500/50 text-red-200 px-6 py-4 rounded-lg flex flex-col items-center justify-center gap-2 text-center animate-pulse-slow">
-            <div className="flex items-center gap-2 font-bold text-lg">
+            <div className="flex items-center gap-2 font-bold text-lg text-red-400">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
-              分析失败 (Analysis Failed)
+              <span>分析失败 (Analysis Failed)</span>
             </div>
-            <p className="font-mono text-sm bg-black/30 p-2 rounded w-full break-all border border-red-500/20">
+            
+            <p className="font-medium text-white/90">
+               {error.includes("Quota") || error.includes("频率") 
+                 ? "API 配额不足 (Rate Limit Exceeded)"
+                 : "系统错误"}
+            </p>
+
+            <p className="font-mono text-sm bg-black/30 p-3 rounded w-full break-words border border-red-500/20 text-slate-400">
               {error}
             </p>
+            
             {error.includes("Key") && (
               <p className="text-xs text-red-300 mt-1">
                 提示: 请检查 Vercel 环境变量设置并**重新部署(Redeploy)**以生效。
+              </p>
+            )}
+            {(error.includes("Quota") || error.includes("频率")) && (
+              <p className="text-xs text-yellow-500 mt-1 flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                </svg>
+                建议：请等待 15-30 秒后再次点击“开始分析”。
               </p>
             )}
           </div>
@@ -136,9 +152,9 @@ const App: React.FC = () => {
              </div>
              <p className="text-xl font-medium text-white mb-2">AI 正在生成决策报告...</p>
              <div className="flex flex-col items-center gap-1 text-sm text-slate-500 font-mono">
-                <p>🔍 检索实时行情与技术指标</p>
-                <p>🧠 计算乖离率与趋势形态</p>
-                <p>📋 生成风险检查清单</p>
+                <p>🔍 检索实时行情与技术指标...</p>
+                <p>🧘‍♂️ 尝试 Gemini 3 Pro 模型 (可能需要重试)...</p>
+                <p>📋 生成风险检查清单...</p>
              </div>
            </div>
         )}
