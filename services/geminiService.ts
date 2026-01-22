@@ -1,8 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 import { StockAnalysisResult } from '../types';
 
-// Declare the global constant injected by Vite
-declare const __API_KEY__: string;
+// Ensure TypeScript recognizes process.env.API_KEY if types aren't fully loaded
+declare const process: { env: { API_KEY: string } };
 
 // Helper to extract JSON from markdown code blocks
 const extractJson = (text: string): any => {
@@ -28,16 +28,12 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export const analyzeStock = async (ticker: string): Promise<StockAnalysisResult> => {
   console.log(`Starting analysis for ${ticker}...`);
 
-  // Use the injected global constant
-  let key: string | undefined;
-  try {
-    key = __API_KEY__;
-  } catch (e) {
-    console.error("Error accessing __API_KEY__", e);
-  }
+  // Access the API Key injected by Vite via define plugin
+  // Vite replaces 'process.env.API_KEY' with the actual string literal at build time.
+  const key = process.env.API_KEY;
 
   // Strict check for empty string
-  if (!key || key === "" || key === "undefined") {
+  if (!key || key === "") {
     console.error("API Key is missing in runtime.");
     throw new Error("API Key is missing. Please check your Vercel Environment Variables (Settings -> Environment Variables -> API_KEY) and then REDEPLOY the project.");
   }
@@ -52,16 +48,21 @@ export const analyzeStock = async (ticker: string): Promise<StockAnalysisResult>
   const prompt = `
     Role: You are a strict, algorithmic Wall Street Trading AI specialized in the US Market and Chan Lun (缠论) Technical Analysis.
     
-    CRITICAL INSTRUCTION FOR REAL-TIME DATA:
-    You DO NOT have internal knowledge of today's stock price.
-    You MUST Use the 'googleSearch' tool IMMEDIATELY to find:
-    1. "${ticker} stock price today live" (Get the exact current price, change, and percentage).
-    2. "${ticker} stock news last 24 hours" (Find specific catalysts).
-    3. "${ticker} technical analysis indicators" (RSI, Moving Averages).
-    
-    IF YOU DO NOT SEARCH, YOU WILL FAIL. DO NOT HALLUCINATE PRICE DATA.
+    **LANGUAGE REQUIREMENT (ABSOLUTE):**
+    - **ALL TEXT OUTPUT MUST BE IN SIMPLIFIED CHINESE (简体中文)**.
+    - Translate all analysis, news summaries, and reasons into Chinese.
+    - Only keep the "ticker" and specific Enum values (e.g., "BULLISH", "Strong Buy") in English for code compatibility.
 
-    Objective: Analyze ticker "${ticker}" to generate a "Daily Decision Dashboard".
+    **DATA SOURCE & FRESHNESS (CRITICAL):**
+    1. You DO NOT have internal real-time knowledge. You MUST use 'googleSearch'.
+    2. **SEARCH QUERIES**: Perform these specific searches:
+       - "${ticker} stock price quote investing.com" (Primary Source for Price)
+       - "${ticker} stock technical analysis investing.com" (Primary Source for Rating)
+       - "${ticker} stock news today" (For catalysts)
+    3. **TIMESTAMP VERIFICATION**: 
+       - Look for "Live", "Real-time", or today's date in the search snippets. 
+       - **IF INVESTING.COM DATA IS OLD/MISSING**: Fallback to Yahoo Finance or CNBC immediately to get the *latest* price.
+       - Do not report data from 2 days ago as "current".
     
     Philosophy (Strictly Enforce):
     1. NO CHASING HIGHS: If price is significantly above the 20-day Moving Average (Bias Rate > 5%), mark as High Risk (Warning).
@@ -69,52 +70,47 @@ export const analyzeStock = async (ticker: string): Promise<StockAnalysisResult>
     3. SAFETY FIRST: Always provide a Stop Loss.
 
     Analysis Tasks:
-    1. **Real-time Data Retrieval**: Confirm the *current* market price and volume via Google Search.
-    2. **Technical Scan**: Analyze RSI, MACD status, Moving Averages (MA5, MA20, MA60).
-    3. **Chan Lun (缠论) Analysis**:
-       - Identify the current trend type (Upward/Downward/Consolidation).
-       - Locate Central Pivots (中枢) and define the current level.
-       - Check for Trend Divergence (背驰/盘整背驰).
-       - Identify valid Buy/Sell Points (1st/2nd/3rd Buy or Sell Points).
-    4. **News/Catalysts**: Summarize top 3 recent news items found via search.
+    1. **Real-time Data**: Extract exact Price, Change ($), and Change (%) from the *latest* available source.
+    2. **Technical Scan**: Analyze RSI, MACD status, Moving Averages.
+    3. **Chan Lun (缠论)**: Identify Trend (Up/Down/盘整), Central Pivot (中枢), Divergence (背驰), and Buy/Sell Points (买卖点).
+    4. **News**: Summarize top 3 recent news items in Chinese.
 
     Output Format:
     Return strictly valid JSON inside \`\`\`json\`\`\` blocks.
-    All text fields must be in Simplified Chinese (简体中文).
 
     JSON Structure:
     {
       "metrics": {
-        "currentPrice": "string ($X.XX) - Must be real-time",
+        "currentPrice": "string ($X.XX) - MUST be latest market price",
         "changeAmount": "string (+/-X.XX)",
         "changePercent": "string (+/-X.XX%)",
         "marketCap": "string",
         "volume": "string",
         "peRatio": "string",
-        "rating": "Buy | Sell | Hold | Strong Buy | Strong Sell"
+        "rating": "Buy | Sell | Hold | Strong Buy | Strong Sell" 
       },
       "tradeSetup": {
         "verdict": "BULLISH | BEARISH | NEUTRAL",
-        "verdictReason": "One concise, impactful sentence summarizing the core decision logic (incorporating Chan Lun view).",
-        "entryZone": "Specific price range or 'Market Price'",
-        "targetPrice": "Specific price target based on Chan Pivot pressure or Fibonacci",
-        "stopLoss": "Specific stop loss price based on Chan Pivot support (中枢下沿) or volatility",
+        "verdictReason": "One concise sentence in CHINESE summarizing the core decision.",
+        "entryZone": "Price range in CHINESE/Numbers (e.g., $100-$102)",
+        "targetPrice": "Specific price target",
+        "stopLoss": "Specific stop loss price",
         "confidenceScore": number (0-100)
       },
       "checklist": [
-        { "name": "缠论结构 (Chan Structure)", "status": "PASS | WARN | FAIL", "detail": "e.g., 3rd Buy Point Confirmed (三买确认) or Divergence (顶背驰)" },
-        { "name": "趋势形态 (Trend)", "status": "PASS | WARN | FAIL", "detail": "e.g., MA Alignment" },
-        { "name": "资金/情绪 (Sentiment)", "status": "PASS | WARN | FAIL", "detail": "e.g., Institutional inflow" },
-        { "name": "成交量 (Volume)", "status": "PASS | WARN | FAIL", "detail": "e.g., Volume matches trend" },
-        { "name": "支撑/压力 (S/R)", "status": "PASS | WARN | FAIL", "detail": "e.g., Above key support" }
+        { "name": "缠论结构 (Chan Structure)", "status": "PASS | WARN | FAIL", "detail": "Short explanation in CHINESE" },
+        { "name": "趋势形态 (Trend)", "status": "PASS | WARN | FAIL", "detail": "Short explanation in CHINESE" },
+        { "name": "资金/情绪 (Sentiment)", "status": "PASS | WARN | FAIL", "detail": "Short explanation in CHINESE" },
+        { "name": "成交量 (Volume)", "status": "PASS | WARN | FAIL", "detail": "Short explanation in CHINESE" },
+        { "name": "支撑/压力 (S/R)", "status": "PASS | WARN | FAIL", "detail": "Short explanation in CHINESE" }
       ],
-      "summary": "Detailed executive summary (Markdown supported).",
-      "technicalAnalysis": "Detailed technical analysis. **MUST** include a dedicated section titled '### 🧘 缠论形态分析 (Chan Lun Analysis)' that explicitly analyzes the Central Pivot (中枢), Divergence (背驰), and Buy/Sell Points. (Markdown supported).",
+      "summary": "Detailed executive summary in CHINESE (Markdown supported).",
+      "technicalAnalysis": "Detailed technical analysis in CHINESE. **MUST** include a dedicated section titled '### 🧘 缠论形态分析' analyzing Central Pivots (中枢) and Buy/Sell Points. (Markdown supported).",
       "chartData": [
-        { "time": "HH:MM", "price": number } // Provide ~10-15 data points representing the intraday trend found via search/reasoning.
+        { "time": "HH:MM", "price": number } // Provide ~10-15 data points to simulate the intraday trend based on High/Low/Current found.
       ],
       "news": [
-        { "title": "News Headline", "source": "Source Name", "snippet": "Short summary", "url": "URL if available" }
+        { "title": "News Headline in CHINESE", "source": "Source Name", "snippet": "Short summary in CHINESE", "url": "URL" }
       ]
     }
   `;
